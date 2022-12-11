@@ -217,42 +217,61 @@ select *
 from dbo.func_ThongKe(2015,2017)
 
 --Câu 4
-alter table SinhVien
+--Thêm cột vào bản 
+alter table Lop
 add SiSo int 
 
-select l.MaLop, count(sv.MaSinhVien) as SiSo
-from SinhVien as sv join Lop as l on sv.MaLop = l.MaLop
-group by l.MaLop
+--Cập nhật sỉ số trong lớp
+if (
+	exists (
+		select *
+		from sys.objects
+		where name = 'proc_Update_SiSo_Lop'
+	)
+)
+	drop procedure proc_Update_SiSo_Lop
+go
+create procedure proc_Update_SiSo_Lop
+as
+	begin
+		set nocount on;
+		DECLARE @MaLop nvarchar(50)
+		DECLARE @SiSo nvarchar(50)
 
-DECLARE @MaLop nvarchar(50)
-DECLARE @SiSo nvarchar(50)
+		DECLARE cursorLop CURSOR FOR  
+		SELECT l.MaLop, l.SiSo
+		FROM Lop as l
 
-DECLARE cursorLop CURSOR FOR  
-SELECT dkcc.MaMP, mp.MaMP
-FROM MucPhi as mp left join DangKyCungCap as dkcc on dkcc.MaMP = mp.MaMP    
+		OPEN cursorLop
+		FETCH NEXT FROM cursorLop    
+		INTO @MaLop, @SiSo
 
-OPEN cursorMucPhi               
+		WHILE @@FETCH_STATUS = 0          
+			BEGIN
+				update Lop
+				set SiSo = isnull((
+					select count(sv.MaSinhVien) as SiSo
+					from SinhVien as sv join Lop as l on sv.MaLop = l.MaLop
+					where sv.MaLop = @MaLop
+					group by l.MaLop
+				),0)
+				where MaLop = @MaLop
 
-FETCH NEXT FROM cursorMucPhi     
-INTO @DKCC_MaMP, @MP_MaMP
+				FETCH NEXT FROM cursorLop 
+				INTO @MaLop, @SiSo
+			END
 
-WHILE @@FETCH_STATUS = 0          
-	BEGIN
+		CLOSE cursorLop             
+		DEALLOCATE cursorLop 
+	end
+go
+--Test case
+execute proc_Update_SiSo_Lop
+select *
+from Lop
+go
 
-		if (@DKCC_MaMP IS NULL)
-			begin
-				delete MucPhi
-				where MaMP = @MP_MaMP
-			end
-
-		FETCH NEXT FROM cursorMucPhi 
-		INTO @DKCC_MaMP, @MP_MaMP
-	END
-
-CLOSE cursorMucPhi             
-DEALLOCATE cursorMucPhi 
-
-
+--Trigger
 if (
 	exists (
 		select *
@@ -266,5 +285,44 @@ create trigger trg_Lop_Update
 on Lop
 for Delete
 as
-	update SinhVien
+	execute proc_Update_SiSo_Lop
 go
+
+--Cau 5
+USE [20T1020110_QLSinhVien]
+GO
+CREATE LOGIN _20T1020110_user WITH PASSWORD = '123456'
+GO
+
+Use [20T1020110_QLSinhVien]
+Go
+CREATE USER mytestdb_user FOR LOGIN _20T1020110_user;
+GO
+
+Use [20T1020110_QLSinhVien]
+GO
+EXECUTE sp_addrolemember 'db_owner', 'mytestdb_user';
+GO
+
+GRANT SELECT 
+ON Lop
+TO mytestdb_user
+
+GRANT CREATE PROCEDURE
+TO mytestdb_user
+
+GRANT EXECUTE
+ON proc_HienThiSinhVien
+TO mytestdb_user
+
+GRANT EXECUTE
+ON proc_Insert_Khoa
+TO mytestdb_user
+
+GRANT EXECUTE
+ON proc_TimKiem_SinhVien
+TO mytestdb_user
+
+GRANT EXECUTE
+ON func_DS_SVLonNhat
+TO mytestdb_user
