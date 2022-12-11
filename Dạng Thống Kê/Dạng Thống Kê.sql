@@ -207,3 +207,109 @@ from (
 where tbl_Rank.Rank = 1
 
 --20. Hãy lập bảng thống kê doanh thu của mỗi mặt hàng trong năm 2017, kết quả truy vấn được hiển thị theo mẫu sau đây:
+
+if (
+	exists (
+		select *
+		from sys.objects
+		where name = 'func_Result_NameMonth'
+	)
+)
+	drop function func_Result_NameMonth
+go
+create function func_Result_NameMonth (
+	@Month int
+)
+returns nvarchar(50)
+as
+	begin
+		declare @Name_Month nvarchar(50);
+		if (@Month = 1)
+			set @Name_Month = 'Jan';
+		else if (@Month = 2)
+			set @Name_Month = 'Feb';
+		else if (@Month = 3)
+			set @Name_Month = 'Mar';
+		else if (@Month = 4)
+			set @Name_Month = 'Apr';
+		else if (@Month = 5)
+			set @Name_Month = 'May';
+		else if (@Month = 6)
+			set @Name_Month = 'Jun';
+		else if (@Month = 7)
+			set @Name_Month = 'Jul';
+		else if (@Month = 8)
+			set @Name_Month = 'Aug';
+		else if (@Month = 9)
+			set @Name_Month = 'Sep';
+		else if (@Month = 10)
+			set @Name_Month = 'Oct';
+		else if (@Month = 11)
+			set @Name_Month = 'Nov';
+		else if (@Month = 12)
+			set @Name_Month = 'Dec';
+		return @Name_Month;
+	end
+go
+
+declare @tbl_Month table (
+		Month int primary key, 
+		NameMonth nvarchar(50)
+)
+declare @index int = 1;
+while (@index <= 12)
+	begin
+		insert into @tbl_Month(Month, NameMonth)
+		values (@index, (select dbo.func_Result_NameMonth(@index)))
+		set @index = @index + 1
+	end
+select * from @tbl_Month
+
+if (
+	exists (
+		select *
+		from sys.objects
+		where name  = 'proc_ThongKe_DoanhThu_MatHang_2017'
+	)
+)
+	drop procedure proc_ThongKe_DoanhThu_MatHang_2017
+go
+create procedure proc_ThongKe_DoanhThu_MatHang_2017
+as
+	begin
+		set nocount on;
+		select p.ProductId, p.ProductName, sum(od.Quantity*od.SalePrice) as DoanhThu
+		from Products as p 
+			 join OrderDetails as od on p.ProductId = od.ProductId
+			 join Orders as o on o.OrderId = od.OrderId
+		where YEAR(o.OrderDate) = 2017
+		group by p.ProductId, p.ProductName
+
+		if(
+			exists (
+					select *
+					from sys.objects
+					where name  = '#tbl_Temporary_ThongKeDoanhThu'
+			)
+		)
+			drop table #tbl_Temporary_ThongKeDoanhThu
+
+		create table #tbl_Temporary_ThongKeDoanhThu (
+			ProductId int primary key,
+			ProductName nvarchar(50)
+		)
+
+
+		declare @index int = 1;
+		while (@index <= 12)
+			begin
+				alter table #tbl_Temporary_ThongKeDoanhThu
+				add a nvarchar(50)
+			end
+		select *
+		from #tbl_Temporary_ThongKeDoanhThu
+	end
+go
+
+select [Beverages]
+from Categories
