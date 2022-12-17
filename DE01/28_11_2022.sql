@@ -140,7 +140,7 @@ create trigger trg_DangKyCungCap_Update ON DangKyCungCap
 for update
 as
 	declare @day int;
-	select @day = DATEDIFF(DAY, dkcc.NgayBatDauCungCap, dkcc.NgayKetThucCungCap)
+	select @day = DATEDIFF(DAY, dkcc.NgayBatDauCungCap, inserted.NgayKetThucCungCap)
 	from inserted join DangKyCungCap as dkcc on inserted.MaDKCC = dkcc.MaDKCC
 	where inserted.MaLoaiDV = dkcc.MaLoaiDV
 	if (@day < 365)

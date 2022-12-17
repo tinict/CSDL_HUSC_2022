@@ -162,7 +162,7 @@ as
 		select tbl_Rank.MaLop, tbl_Rank.TenLop, tbl_Rank.SoLuong
 		from (
 			select sv.MaLop, l.TenLop, count(sv.MaSinhVien) as SoLuong,
-			   rank() over (order by count(sv.MaSinhVien) DESC) as Rank
+				   rank() over (order by count(sv.MaSinhVien) DESC) as Rank
 			from SinhVien as sv join Lop as l on sv.MaLop = l.MaLop
 			group by sv.MaLop, l.TenLop
 		) as tbl_Rank
@@ -214,7 +214,7 @@ go
 
 --Test 
 select *
-from dbo.func_ThongKe(2015,2017)
+from dbo.func_ThongKe(2015,2018)
 
 --Câu 4
 --Thêm cột vào bản 
@@ -270,6 +270,9 @@ execute proc_Update_SiSo_Lop
 select *
 from Lop
 go
+
+select *
+from Lop
 
 --Trigger
 if (
