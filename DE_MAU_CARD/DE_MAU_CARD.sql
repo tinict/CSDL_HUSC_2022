@@ -6,33 +6,41 @@ add Quantity int
 select *
 from CardStore
 
-if(exists(select * from sys.objects where name = 'trg_Invoice_Insert'))
-	drop trigger trg_Invoice_Insert
+if(exists(select * from sys.objects where name = 'trg_CardStore_Update'))
+	drop trigger trg_CardStore_Update
 go
-create trigger trg_Invoice_Insert
-on Invoice
-for insert
+create trigger trg_CardStore_Update
+on CardStore
+for update
 as
 	begin
 		declare @CardTypeId bigint = (
-			select cds.CardTypeId
-			from inserted as ins join CardStore as cds on ins.InvoiceId = cds.InvoiceId
+			select ins.CardTypeId
+			from inserted as ins
 		)
 		declare @Amount money = (
-			select cds.Amount
-			from inserted as ins join CardStore as cds on ins.InvoiceId = cds.InvoiceId
+			select ins.Amount
+			from inserted as ins 
 		)
 		update CardStore
-		set Quantity = (
+		set Quantity = isnull((
 			select count(cs.CardId)
 			from CardStore as cs
 			where cs.CardTypeId = @CardTypeId and cs.Amount = @Amount
 			group by cs.InvoiceId
 			having cs.InvoiceId is null
-		)
+		),0)
 		where CardTypeId = @CardTypeId and Amount = @Amount
 	end
 go
+--Test 
+
+update CardStore
+set InvoiceId = 2 
+where Amount = 100000 and CardId = 10
+
+select *
+from CardStore
 
 --Câu 3:
 if(exists(select * from sys.objects where name = 'proc_Customer_Register'))
@@ -107,7 +115,20 @@ create procedure proc_Insert_CardType (
 as
 	begin
 		set nocount on;
-		if(exists (select * from CardType where CardTypeName = @CardTypeName))			begin				set @Result = N'Thẻ này đã tồn tại!'				return 0;			end		if(@Description = '')			begin				set @Result = N'Bạn chưa mô tả loại thẻ';				return 0;			end		insert into CardType(CardTypeName, Description)		values(@CardTypeName, @Description)		set @CardTypeId = @@IDENTITY		set @Result = '';
+		if(exists (select * from CardType where CardTypeName = @CardTypeName))
+			begin
+				set @Result = N'Thẻ này đã tồn tại!'
+				return 0;
+			end
+		if(@Description = '')
+			begin
+				set @Result = N'Bạn chưa mô tả loại thẻ';
+				return 0;
+			end
+		insert into CardType(CardTypeName, Description)
+		values(@CardTypeName, @Description)
+		set @CardTypeId = @@IDENTITY
+		set @Result = '';
 	end
 go
 --Test case
@@ -317,7 +338,7 @@ to THI_20T1020110_test_user
 go
 
 grant execute
-on proc_Insert _CardType
+on proc_Insert_CardType
 to THI_20T1020110_test_user
 go
 
