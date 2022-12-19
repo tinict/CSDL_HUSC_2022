@@ -46,21 +46,36 @@ as
 			select ins.UserName
 			from inserted as ins
 		)
+		declare @QuestionId nvarchar(50) = (
+			select ins.QuestionId
+			from inserted as ins
+		)
 		Update UserAccount
 		set NumOfAnswers = (
 			select count(ans.AnswerId)
 			from Answer as ans
-			where ans.UserName like '%' + @UserName + '%'
+			where UserName = @UserName
 		)
-		where UserName like '%' + @UserName + '%'
+		where UserName = @UserName
+
+		Update Question
+		set NumOfAnswers = (
+			select count(asw.AnswerId)
+			from Question as qs join Answer as asw on asw.QuestionId = qs.QuestionId
+			where qs.QuestionId = 8
+		)
+		where QuestionId = @QuestionId
 	end
 go
 --Test
 insert into Answer(QuestionId, AswerContent, UserName)
-values (13, N'gì đấy', 'thanhnhan')
+values (8, N'Test cu an luon', 'thanhnhan')
 
 select *
 from UserAccount
+
+select *
+from Question as qs join Answer as asw on asw.QuestionId = qs.QuestionId
 
 --Cau 2
 --a
@@ -121,16 +136,20 @@ create procedure proc_UserAccount_Update (
 as
 	begin
 		set nocount on;
+		--Nhập rỗng
 		if (@UserName = N'')
 			begin
 				set @Result = N'UserName chưa nhập'
 				return 0;
 			end
+		--Nhập rỗng
 		if (@FullName = N'')
 			begin
 				set @Result = N'FullName chưa nhập'
 				return 0;
 			end
+			--Kiểm tra Email không tồn tại
+		--Chưa điền đầy đủ họ tên
 		if (not exists (
 			select *
 			from UserAccount
@@ -140,6 +159,13 @@ as
 				set @Result = N'User name này không tồn tại !'
 				return 0;
 			end
+		--Chưa nhập Email
+		if (@Email = '')
+			begin
+				set @Result = N'Email chưa nhập !'
+				return 0;
+			end
+		--Email này đã được sử dụng
 		if (exists (
 			select *
 			from UserAccount
@@ -149,6 +175,7 @@ as
 				set @Result = N'Email đã tồn tại !'
 				return 0;
 			end
+		-- Kiểm tra độ chính xác của Email khi nhập
 		if ((select CHARINDEX('@gmail.com', @Email)) = 0)
 			begin
 				set @Result = N'Email này không chính xác'

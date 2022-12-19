@@ -18,6 +18,7 @@ create procedure proc_AssignTaskToEmployee (
 as
 	begin
 		set nocount on;
+		--Kiểm tra task không tồn tại
 		if (
 			not exists(
 				select *
@@ -29,6 +30,8 @@ as
 				set @Result = N'Không tồn tại nhiệm vụ này !'
 				return 0;
 			end
+
+		--Kiểm tra người này có tồn tại hay không
 		if (
 			not exists(
 				select *
@@ -40,9 +43,26 @@ as
 				set @Result = N'Không tồn tại người này !'
 				return 0;
 			end
+		--Kiểm tra ngày giao bài tập
 		if (@AssignedDate = '')
 			begin
 				set @Result = N'Vui lòng nhập ngày giao bài tập'
+				return 0;
+			end
+		--Kiểm tra bài tập này đã giao cho người này
+		if (exists (
+			select *
+			from TaskAssignments
+			where TaskId = @TaskId and EmployeeId = @EmployeeId
+		))
+			begin
+				set @Result = N'Vui lòng nhập ngày giao bài tập'
+				return 0;
+			end
+		--Kiểm tra thông giao bài có rỗng hay không
+		if (@TaskId = '' or @EmployeeId = '')
+			begin
+				set @Result = N'Thông tin giao bài chưa nhập'
 				return 0;
 			end
 		insert into TaskAssignments (TaskId, EmployeeId, AssignedDate)
@@ -166,7 +186,7 @@ as
 	end
 go
 --Test case
-declare @SearchValue nvarchar(255) = N'Tín',
+declare @SearchValue nvarchar(255) = N'',
 		@Page int = 1,
 		@PageSize int = 20,
 		@RowCount int,
@@ -271,11 +291,16 @@ as
 			select ins.TaskId
 			from inserted as ins
 		)
+		declare @EmployeeId int = (
+			select ins.EmployeeId
+			from inserted as ins
+		)
 		update Tasks
 		set CountOfFinished = (
 			select count(ta.EmployeeId)
 			from TaskAssignments as ta
-			where ta.TaskId = @TaskId and ta.FinishedDate is not null
+			where ta.TaskId = @TaskId and ta.FinishedDate is not null and  EmployeeId = @EmployeeId
+		 
 			group by ta.TaskId
 		)
 		where TaskId = @TaskId
